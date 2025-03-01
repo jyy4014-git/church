@@ -1,0 +1,200 @@
+📌 **사전 번역 기반 지도 앱 구현 계획**
+
+---
+
+### 1. **데이터베이스 확장 (다국어 지원)**
+#### 1.1 기존 `locations` 테이블 수정
+```sql
+ALTER TABLE locations 
+ADD COLUMN name_en VARCHAR(255),   -- 영어 번역
+ADD COLUMN name_es VARCHAR(255),   -- 스페인어 번역
+ADD COLUMN name_zh VARCHAR(255),   -- 중국어 번역
+ADD COLUMN name_ko VARCHAR(255),   -- 한국어 번역
+ADD COLUMN name_ja VARCHAR(255),   -- 일본어 번역   
+ADD COLUMN name_vi VARCHAR(255),   -- 베트남어 번역
+ADD COLUMN name_th VARCHAR(255),   -- 태국어 번역
+ADD COLUMN name_id VARCHAR(255),   -- 인도네시아어 번역
+ADD COLUMN name_ph VARCHAR(255),   -- 필리핀어 번역
+
+ADD COLUMN description_en TEXT,
+ADD COLUMN description_es TEXT, 
+ADD COLUMN description_zh TEXT,
+ADD COLUMN description_ko TEXT,
+ADD COLUMN description_ja TEXT,
+ADD COLUMN description_vi TEXT,
+ADD COLUMN description_th TEXT,
+ADD COLUMN description_id TEXT,
+ADD COLUMN description_ph TEXT;
+```
+
+CREATE TABLE user_settings (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    language VARCHAR(10) DEFAULT 'ko' CHECK (language IN ('ko', 'en', 'es', 'zh'))
+);
+
+2. UI/UX 개선 방안
+2.1 언어 선택 기능
+설정 화면에 언어 선택 드롭다운 추가
+
+dart
+Copy
+// Flutter 예시
+DropdownButton(
+  value: 'ko',
+  items: [
+    DropdownMenuItem(value: 'ko', child: Text('한국어')),
+    DropdownMenuItem(value: 'en', child: Text('English')),
+  ],
+  onChanged: (value) => updateLanguage(value),
+)
+2.2 핫스팟 정보 표시 로직
+dart
+Copy
+// 사용자 언어에 따른 동적 텍스트 반환
+String getLocalizedText(String lang, String field) {
+  switch(lang) {
+    case 'en': return '$field\_en';
+    case 'es': return '$field\_es';
+    case 'zh': return '$field\_zh';
+    case 'ko': return '$field\_ko';
+    case 'ja': return '$field\_ja';
+    case 'vi': return '$field\_vi';
+    case 'th': return '$field\_th';
+    case 'id': return '$field\_id';
+    case 'ph': return '$field\_ph';
+    default: return field;
+  }
+}
+
+// 팝업에 적용
+Text(getLocalizedText(userLang, location.name)),
+Text(getLocalizedText(userLang, location.description)),
+3. API 확장
+3.1 언어 설정 API
+http
+Copy
+PATCH /api/v1/users/{id}/settings
+요청 본문:
+{ "language": "en" }
+
+응답:
+{ "message": "언어 설정이 en으로 변경되었습니다" }
+
+
+1. 데이터베이스 구조 개선
+1.1 languages 테이블 (지원 언어 관리)
+sql
+Copy
+CREATE TABLE languages (
+    code VARCHAR(10) PRIMARY KEY,  -- 언어 코드 (ISO 639-1)
+    name VARCHAR(50) NOT NULL       -- 언어명 (예: '한국어', 'English')
+);
+
+-- 초기 데이터
+INSERT INTO languages (code, name) VALUES
+('ko', '한국어'),
+('en', 'English'),
+('es', 'Español'),
+('zh', '中文');
+1.2 location_translations 테이블 (번역 데이터 분리)
+sql
+Copy
+CREATE TABLE location_translations (
+    id SERIAL PRIMARY KEY,
+    location_id INTEGER NOT NULL REFERENCES locations(id),
+    language_code VARCHAR(10) NOT NULL REFERENCES languages(code),
+    name_translated VARCHAR(255) NOT NULL,
+    description_translated TEXT NOT NULL,
+    UNIQUE(location_id, language_code)
+);
+1.3 기존 locations 테이블 단순화
+sql
+Copy
+-- 기존 다국어 컬럼 제거
+ALTER TABLE locations 
+DROP COLUMN name_en,
+DROP COLUMN name_es,
+-- ... (모든 언어별 컬럼 삭제)
+ADD COLUMN base_name VARCHAR(255);  -- 기본 언어(한국어) 이름
+2. 데이터 마이그레이션 예시
+sql
+Copy
+-- 기존 데이터 → 새로운 구조로 이동
+INSERT INTO location_translations (location_id, language_code, name_translated, description_translated)
+SELECT 
+    id, 
+    'en' AS language_code,
+    name_en,
+    description_en
+FROM locations
+WHERE name_en IS NOT NULL;
+
+-- 이후 기존 컬럼 삭제
+ALTER TABLE locations DROP COLUMN name_en;
+
+
+3. API 엔드포인트 수정
+3.1 다국어 지도 데이터 조회
+http
+Copy
+GET /api/v1/church/map?lang=en
+sql
+Copy
+-- SQL 쿼리 예시
+SELECT 
+    l.id,
+    lt.name_translated AS name,
+    lt.description_translated AS description,
+    l.coord_x,
+    l.coord_y
+FROM locations l
+JOIN location_translations lt 
+    ON l.id = lt.location_id
+    AND lt.language_code = 'en';
+
+
+4. 장점
+확장성:
+
+새 언어 추가 시 테이블 수정 없이 데이터만 입력 (languages 테이블에 레코드 추가)
+
+예시) 일본어 추가:
+
+sql
+Copy
+INSERT INTO languages (code, name) VALUES ('ja', '日本語');
+유지보수 용이성:
+
+번역 데이터가 별도 테이블로 관리되어 오류 수정이 간편
+
+쿼리 최적화:
+
+JOIN을 통한 효율적인 데이터 조회 가능
+
+데이터 무결성:
+
+외래키 제약조건으로 잘못된 언어 코드 입력 방지
+
+5. 프론트엔드 연동 가이드
+dart
+Copy
+// 언어별 번역 데이터 조회
+Future<Map<String, dynamic>> fetchLocationData(int id, String lang) async {
+    final response = await dio.get(
+        '/locations/$id',
+        queryParameters: {'lang': lang}
+    );
+    return response.data;
+}
+
+// 사용 예시
+final data = await fetchLocationData(101, 'en');
+print(data['name']);  // "Chapel"
+6. 관리자 대시보드 기능
+번역 관리 인터페이스:
+
+언어 선택 드롭다운 → 해당 언어의 번역 필드 표시
+
+실시간 저장 기능 (PATCH API 연동)
+
+번역 진행률 표시:
