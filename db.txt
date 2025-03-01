@@ -1,0 +1,144 @@
+CREATE DATABASE church
+    DEFAULT CHARACTER SET = 'utf8mb4';
+
+USE church;
+
+
+-- MySQL용 최종 데이터베이스 스키마
+
+-- 1. 언어 테이블 (가장 먼저 생성)
+CREATE TABLE languages (
+    code VARCHAR(10) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+-- 초기 데이터 삽입
+INSERT INTO languages (code, name) VALUES
+('ko', '한국어'),
+('en', 'English'),
+('es', 'Español'),
+('zh', '中文'),
+('ja', '日本語'),
+('vi', 'Tiếng Việt'),
+('th', 'ไทย'),
+('id', 'Bahasa Indonesia'),
+('ph', 'Filipino');
+
+-- 2. 기본 테이블 생성 (참조 관계 순서대로)
+-- 2.1 역할 테이블
+CREATE TABLE roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+-- 2.2 사용자 테이블
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    cell_no VARCHAR(20) UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id)
+) ENGINE=InnoDB;
+
+-- 2.3 건물 테이블
+CREATE TABLE buildings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    map_image_url TEXT NOT NULL
+) ENGINE=InnoDB;
+
+-- 2.4 지도 메타 테이블
+CREATE TABLE church_map (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    building_id INT,
+    map_image_url TEXT NOT NULL,
+    description TEXT,
+    image_version VARCHAR(20) NOT NULL DEFAULT '1.0',
+    tile_size INT NOT NULL DEFAULT 256,
+    max_zoom_level INT NOT NULL DEFAULT 5,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (building_id) REFERENCES buildings(id)
+) ENGINE=InnoDB;
+
+-- 2.5 장소 기본 정보 테이블 (다국어 컬럼 제거)
+CREATE TABLE locations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    base_name VARCHAR(255) NOT NULL,  -- 기본 언어(한국어) 이름
+    category VARCHAR(50) NOT NULL,
+    floor VARCHAR(10) NOT NULL,
+    x_ratio DECIMAL(5,4) NOT NULL CHECK (x_ratio BETWEEN 0 AND 1),
+    y_ratio DECIMAL(5,4) NOT NULL CHECK (y_ratio BETWEEN 0 AND 1),
+    base_image_width INT NOT NULL DEFAULT 1920,
+    base_image_height INT NOT NULL DEFAULT 1080,
+    thumbnail_url TEXT,
+    detail_image_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 3. 관계 테이블 생성
+-- 3.1 장소 번역 테이블
+CREATE TABLE location_translations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    location_id INT NOT NULL,
+    language_code VARCHAR(10) NOT NULL,
+    name_translated VARCHAR(255) NOT NULL,
+    description_translated TEXT NOT NULL,
+    directions_translated TEXT,
+    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE,
+    FOREIGN KEY (language_code) REFERENCES languages(code),
+    UNIQUE(location_id, language_code)
+) ENGINE=InnoDB;
+
+-- 3.2 사용자 설정 테이블
+CREATE TABLE user_settings (
+    user_id INT PRIMARY KEY,
+    language_code VARCHAR(10) NOT NULL DEFAULT 'ko',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (language_code) REFERENCES languages(code)
+) ENGINE=InnoDB;
+
+-- 4. 기능 테이블 생성
+-- 4.1 즐겨찾기
+CREATE TABLE bookmarks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    location_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE,
+    UNIQUE(user_id, location_id)
+) ENGINE=InnoDB;
+
+-- 4.2 검색 기록
+CREATE TABLE search_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    query TEXT NOT NULL,
+    expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 30 DAY),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 4.3 상호작용 로그
+CREATE TABLE hotspot_interactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    location_id INT NOT NULL,
+    action_type ENUM('CLICK', 'ZOOM', 'BOOKMARK') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 5. 인덱스 생성
+CREATE INDEX idx_loc_category ON locations(category);
+CREATE INDEX idx_loc_floor ON locations(floor);
+CREATE INDEX idx_search_query ON search_history(query(255));
+CREATE INDEX idx_hotspot_coord ON locations(x_ratio, y_ratio);
+CREATE INDEX idx_translation_pair ON location_translations(location_id, language_code);

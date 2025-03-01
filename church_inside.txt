@@ -349,3 +349,79 @@ const getPixelPosition = (ratioX, ratioY, imageWidth, imageHeight) => {
 이미지를 width: 100%, height: auto로 설정하여 세로 스크롤 가능하도록 구성.
 
 핫스팟 위치 계산 시 이미지 실제 렌더링 크기를 동적으로 측정 후 적용.
+
+church_navigation/
+├── android/
+├── ios/
+├── lib/
+│   ├── app.dart
+│   ├── config/
+│   │   └── routes.dart
+│   ├── data/
+│   │   ├── local/
+│   │   │   ├── secure_storage.dart
+│   │   │   └── hive_service.dart
+│   │   ├── models/
+│   │   │   ├── location_model.dart
+│   │   │   ├── location_model.g.dart
+│   │   │   ├── bookmark_model.dart
+│   │   │   ├── bookmark_model.g.dart
+│   │   │   ├── search_history_model.dart
+│   │   │   ├── search_history_model.g.dart
+│   │   │   ├── user_model.dart
+│   │   │   ├── user_model.g.dart
+│   │   │   ├── role_model.dart
+│   │   │   ├── role_model.g.dart
+│   │   │   ├── church_map_model.dart
+│   │   │   ├── church_map_model.g.dart
+│   │   │   ├── pathway_model.dart
+│   │   │   ├── pathway_model.g.dart
+│   │   │   ├── building_model.dart
+│   │   │   ├── building_model.g.dart
+│   │   │   ├── audit_log_model.dart
+│   │   │   └── audit_log_model.g.dart
+│   │   ├── providers/
+│   │   │   ├── location_provider.dart
+│   │   │   ├── bookmark_provider.dart
+│   │   │   ├── search_history_provider.dart
+│   │   │   ├── map_provider.dart
+│   │   │   ├── user_provider.dart
+│   │   │   ├── pathway_provider.dart
+│   │   │   └── auth_provider.dart
+│   │   ├── repositories/
+│   │   │   ├── location_repository.dart
+│   │   │   ├── bookmark_repository.dart
+│   │   │   ├── search_history_repository.dart
+│   │   │   ├── church_map_repository.dart
+│   │   │   ├── user_repository.dart
+│   │   │   └── pathway_repository.dart
+│   │   └── services/
+│   │       ├── church_api_service.dart
+│   │       ├── church_api_service.g.dart
+│   │       └── auth_service.dart
+│   │       └── auth_service.g.dart
+│   ├── presentation/
+│   │   ├── screens/
+│   │   │   ├── main_map_screen.dart
+│   │   │   ├── location_detail_screen.dart
+│   │   │   ├── search_modal_screen.dart
+│   │   │   ├── login_screen.dart
+│   │   │   └── setting_screen.dart
+│   │   └── widgets/
+│   │       ├── search_bar.dart
+│   │       ├── location_card.dart
+│   │       ├── bottom_navigation.dart
+│   │       ├── hotspot_overlay.dart
+│   │       └── loading_indicator.dart
+│   ├── utils/
+│   │   ├── constants.dart
+│   │   └── helpers.dart
+│   ├── generated/
+│   ├── l10n/
+│   │   ├── app_en.arb
+│   │   └── app_ko.arb
+│   ├── main.dart
+├── test/
+├── church_inside.txt
+├── build.yaml
+└── pubspec.yaml
