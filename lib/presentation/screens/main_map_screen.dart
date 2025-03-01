@@ -75,7 +75,9 @@ class MainMapScreen extends ConsumerWidget {
             },
           );
         },
-        error: (error, stack) => Center(child: Text("Error: $error")),
+        error: (error, stack) {
+          return Center(child: Text("Error: $error"));
+        },
         loading: () => const LoadingIndicator(),
       ),
       bottomNavigationBar: const BottomNavigation(),
